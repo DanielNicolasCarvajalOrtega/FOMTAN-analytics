@@ -1,5 +1,6 @@
 
 # FOMTAN – Clasificador de frutas para pre-selección antes del packing
+![img readME](https://github.com/user-attachments/assets/d52dfc49-ecac-4bc0-8c3e-2aeb5afa59c0)
 
 FOMTAN (**Frescura Óptima Medida con Tecnología de ANálisis**) es un prototipo local que usa visión computacional para **apoyar la selección de frutas antes de la exportación**.  
 A partir de la imagen capturada por la cámara del computador, el modelo de IA clasifica cada pieza en:
