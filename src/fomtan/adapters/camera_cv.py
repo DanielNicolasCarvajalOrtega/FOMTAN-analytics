@@ -13,6 +13,11 @@ class CameraCV:
         self.cap = cv2.VideoCapture(self.camera_index)
         if not self.cap.isOpened():
             raise RuntimeError(f"Could not open camera with index {self.camera_index}")
+        
+        # Reducir resolución para mejor rendimiento
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
 
     def read_frame(self) -> Optional[Frame]:
         """Lee un cuadro (frame) de la cámara. Retorna None si falla la lectura."""

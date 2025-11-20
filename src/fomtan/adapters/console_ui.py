@@ -17,5 +17,5 @@ class ConsoleUI:
         
         # Limpia la línea e imprime el estado
         # mueve el cursor al principio de la línea
-        sys.stdout.write(f"\r{color_code}Status: {result.color.upper()} | Label: {result.label} | Prob: {result.probability:.2f}{reset_code}")
+        sys.stdout.write(f"\r{color_code}Status: {result.color.upper()} | Etiqueta: {result.etiqueta} | Prob: {result.probabilidad:.2f}{reset_code}")
         sys.stdout.flush()

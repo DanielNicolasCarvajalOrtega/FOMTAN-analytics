@@ -1,76 +1,90 @@
+# FOMTAN Analytics
 
-# FOMTAN – Clasificador de frutas para pre-selección antes del packing
-![img readME](https://github.com/user-attachments/assets/d52dfc49-ecac-4bc0-8c3e-2aeb5afa59c0)
+Sistema de análisis y clasificación de frutas en tiempo real usando TensorFlow Lite.
 
-FOMTAN (**Frescura Óptima Medida con Tecnología de ANálisis**) es un prototipo local que usa visión computacional para **apoyar la selección de frutas antes de la exportación**.  
-A partir de la imagen capturada por la cámara del computador, el modelo de IA clasifica cada pieza en:
+## Inicio Rápido
 
-- 🟢 **VERDE**   → fruta de primera calidad (exportación / mercado premium)  
-- 🟡 **AMARILLO** → segunda selección / industria / procesado  
-- 🔴 **ROJO**    → descarte (daño severo, hongo, pudrición)
+### Opción 1: Usando el script de inicio (Recomendado)
+```bash
+./start.sh
+```
 
-La aplicación muestra la cámara en tiempo real, un “semáforo” en otra ventana y reproduce un mensaje de voz con la decisión. El objetivo es **evitar que fruta defectuosa entre a las cajas de exportación** y reducir mermas en el packing.
+### Opción 2: Usando el entorno virtual directamente
+```bash
+source .venv/bin/activate
+python run.py
+```
 
----
+### Opción 3: Sin activar el entorno virtual
+```bash
+.venv/bin/python run.py
+```
 
-## Contexto de uso
+## Requisitos
 
-En la práctica, mucha fruta se clasifica “a ojo” en el campo o en la recepción del packing.  
-Si se cuela fruta con hongos, golpes o sobremadurez en las cajas de exportación:
+- Python 3.8+
+- Cámara conectada
+- Dependencias instaladas (ver `requirements.txt`)
 
-- baja la calidad comercial del lote completo,
-- aumentan las mermas en cámara y transporte,
-- se generan reclamos y descuentos por parte del comprador.
+## Instalación de Dependencias
 
-FOMTAN busca entregar una **herramienta simple** (semáforo + voz) que estandarice la decisión de calidad **antes** del empacado.
+```bash
+# Activar entorno virtual
+source .venv/bin/activate
 
----
+# Instalar dependencias
+pip install -r requirements.txt
 
-## Funcionalidades principales
+# Instalar TensorFlow
+pip install tensorflow
+```
 
-- Captura de imagen desde **webcam**.
-- Clasificación en 3 estados de calidad (`primera`, `segunda`, `descarte`) con un modelo de IA entrenado con dataset de frutas.
-- Ventana de cámara + ventana de **semáforo de estado** (verde/amarillo/rojo).
-- Mensaje de voz (Text-To-Speech) con la decisión para uso tipo “manos ocupadas”.
-- Registro opcional en archivo CSV (fecha, clase, decisión) para análisis posterior.
+## Estructura del Proyecto
 
----
+```
+FOMTAN-analytics/
+├── models/tflite/          # Modelos TensorFlow Lite
+│   ├── detect_fruit.tflite # Modelo de detección
+│   ├── cls_estado.tflite   # Modelo de clasificación
+│   └── labels.txt          # Etiquetas (buena, segunda, descarte)
+├── src/fomtan/
+│   ├── adapters/           # Adaptadores (cámara, modelos, UI)
+│   ├── app/                # Aplicación principal
+│   └── core/               # Tipos y utilidades
+├── run.py                  # Script de entrada
+└── start.sh                # Script de inicio (recomendado)
+```
 
-## Arquitectura del prototipo
+## Uso
 
-Arquitectura por capas, pensada para ser simple y extensible:
+1. Ejecuta el programa con `./start.sh`
+2. La aplicación abrirá la cámara y comenzará a detectar frutas
+3. Los resultados se mostrarán en pantalla:
+   - **Verde**: Pieza buena (primera calidad)
+   - **Amarillo**: Pieza segunda
+   - **Rojo**: Pieza de descarte
+4. Presiona 'q' para salir
 
-- **Core (dominio, funcional):**
-  - Preprocesamiento de la imagen.
-  - Conversión de predicción → decisión de negocio (VERDE/AMARILLO/ROJO + mensaje).
-- **Adapters (IO):**
-  - Captura de cámara con **OpenCV**.
-  - Carga e inferencia del modelo (YOLOv8 clasificación o TFLite).
-  - UI de ventanas (cámara + semáforo).
-  - Audio con **pyttsx3** (TTS offline).
-  - Logger en CSV.
-- **App / Orquestador:**
-  - Bucle principal que une todo y maneja la configuración.
+## Solución de Problemas
 
----
+### Error: "No module named 'cv2'"
+```bash
+pip install opencv-python
+```
 
-## Tecnologías
+### Error: "TensorFlow Lite is not installed"
+```bash
+pip install tensorflow
+```
 
-- **Python 3.10+**
-- **OpenCV** (`opencv-python`) – captura de cámara y visualización.
-- **Ultralytics YOLOv8 (clasificación)** – entrenamiento/inferencia del modelo.
-- **NumPy** – manipulación numérica de imágenes.
-- **pyttsx3** – síntesis de voz offline.
-- (Opcional) `tflite-runtime` si se usa un modelo exportado desde Google Cloud / AutoML.
+### Error: "cannot import name 'DetectionResult'"
+Este error ya está solucionado en la versión actual del código.
 
----
+### La cámara no se abre
+- Verifica que la cámara esté conectada
+- Verifica los permisos de la cámara en Configuración del Sistema
+- Prueba con un índice de cámara diferente en `camera_cv.py`
 
-## Dataset
+## Desarrollo
 
-El prototipo utiliza un dataset de frutas basado en:
-
-- Conjunto tipo **Fruits-360** y/o datasets “fresh vs rotten” (Kaggle).
-- Re-etiquetado en **tres clases de calidad**:
-  - `primera`  → fruta visualmente sana.
-  - `segunda`  → defectos leves pero comercializable.
-  - `descarte` → fruta con hongos/pudrición/daño severo.
+Para contribuir al proyecto, sigue la estructura de código existente y asegúrate de que todos los imports usen rutas relativas dentro del paquete `fomtan`.
