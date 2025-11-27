@@ -1,76 +1,95 @@
+# 🍎 FOMTAN Analytics (Prototipo v3.0)
 
-# FOMTAN – Clasificador de frutas para pre-selección antes del packing
-![img readME](https://github.com/user-attachments/assets/d52dfc49-ecac-4bc0-8c3e-2aeb5afa59c0)
-
-FOMTAN (**Frescura Óptima Medida con Tecnología de ANálisis**) es un prototipo local que usa visión computacional para **apoyar la selección de frutas antes de la exportación**.  
-A partir de la imagen capturada por la cámara del computador, el modelo de IA clasifica cada pieza en:
-
-- 🟢 **VERDE**   → fruta de primera calidad (exportación / mercado premium)  
-- 🟡 **AMARILLO** → segunda selección / industria / procesado  
-- 🔴 **ROJO**    → descarte (daño severo, hongo, pudrición)
-
-La aplicación muestra la cámara en tiempo real, un “semáforo” en otra ventana y reproduce un mensaje de voz con la decisión. El objetivo es **evitar que fruta defectuosa entre a las cajas de exportación** y reducir mermas en el packing.
+> 🚧 **ESTADO DEL PROYECTO: EN DESARROLLO / PROTOTIPO** 🚧
+>
+> Este software es una versión de prueba técnica diseñada para validar la lógica de negocio y los algoritmos de visión artificial en un entorno controlado (PC/Mac). **NO es la versión final para producción.**
+>
+> El objetivo final es migrar esta lógica a una **Aplicación Móvil (Android/iOS)** usando tecnología Edge AI (TFLite/CoreML) para su uso en campo sin internet.
 
 ---
 
-## Contexto de uso
+## � Descripción General
 
-En la práctica, mucha fruta se clasifica “a ojo” en el campo o en la recepción del packing.  
-Si se cuela fruta con hongos, golpes o sobremadurez en las cajas de exportación:
+**FOMTAN Analytics** es un sistema inteligente para el sector agrícola (AgroTech) que utiliza Visión Artificial para detectar, clasificar y analizar la cosecha en tiempo real.
 
-- baja la calidad comercial del lote completo,
-- aumentan las mermas en cámara y transporte,
-- se generan reclamos y descuentos por parte del comprador.
+### 🌟 Características Principales (Actuales)
 
-FOMTAN busca entregar una **herramienta simple** (semáforo + voz) que estandarice la decisión de calidad **antes** del empacado.
+1.  **👁️ Detección de Objetos (YOLOv5)**:
+    *   Identifica frutas (Manzanas, Tomates, Cerezas) y su estado (Bueno, Regular, Malo).
+    *   Alta precisión ajustada para evitar falsos positivos.
 
----
+2.  **🗣️ Asistente de Voz Neural (Edge TTS)**:
+    *   Te habla en tiempo real usando voces ultra-realistas (Microsoft Azure Neural Voices).
+    *   Avisa qué frutas ve sin necesidad de mirar la pantalla.
+    *   *Voz actual: "Dalia" (Español México).*
 
-## Funcionalidades principales
+3.  **🧠 Harvest Intelligence (Analítica de Negocio)**:
+    *   **Proyección de Rendimiento**: Predice cuántas unidades se cosecharán en el día (Función Lineal).
+    *   **Índice de Esfuerzo**: Calcula la dificultad del lote usando logaritmos (si hay mucha fruta mala, el índice sube).
+    *   **Valoración Financiera**: Estima el dinero ($ USD) visible en pantalla.
 
-- Captura de imagen desde **webcam**.
-- Clasificación en 3 estados de calidad (`primera`, `segunda`, `descarte`) con un modelo de IA entrenado con dataset de frutas.
-- Ventana de cámara + ventana de **semáforo de estado** (verde/amarillo/rojo).
-- Mensaje de voz (Text-To-Speech) con la decisión para uso tipo “manos ocupadas”.
-- Registro opcional en archivo CSV (fecha, clase, decisión) para análisis posterior.
-
----
-
-## Arquitectura del prototipo
-
-Arquitectura por capas, pensada para ser simple y extensible:
-
-- **Core (dominio, funcional):**
-  - Preprocesamiento de la imagen.
-  - Conversión de predicción → decisión de negocio (VERDE/AMARILLO/ROJO + mensaje).
-- **Adapters (IO):**
-  - Captura de cámara con **OpenCV**.
-  - Carga e inferencia del modelo (YOLOv8 clasificación o TFLite).
-  - UI de ventanas (cámara + semáforo).
-  - Audio con **pyttsx3** (TTS offline).
-  - Logger en CSV.
-- **App / Orquestador:**
-  - Bucle principal que une todo y maneja la configuración.
+4.  **📊 Dashboard en Tiempo Real**:
+    *   Ventana gráfica independiente que muestra los KPIs de negocio actualizados cada 10 segundos.
 
 ---
 
-## Tecnologías
+## 🚀 Cómo Ejecutar el Sistema
 
-- **Python 3.10+**
-- **OpenCV** (`opencv-python`) – captura de cámara y visualización.
-- **Ultralytics YOLOv8 (clasificación)** – entrenamiento/inferencia del modelo.
-- **NumPy** – manipulación numérica de imágenes.
-- **pyttsx3** – síntesis de voz offline.
-- (Opcional) `tflite-runtime` si se usa un modelo exportado desde Google Cloud / AutoML.
+### Requisitos Previos
+*   Python 3.8+
+*   Entorno virtual configurado (`.venv`)
+*   Cámara Web
+*   Conexión a Internet (Solo para la voz neural de alta calidad)
+
+### Pasos para Iniciar
+
+1.  **Activar el entorno virtual**:
+    ```bash
+    source .venv/bin/activate
+    ```
+
+2.  **Ejecutar el programa principal**:
+    ```bash
+    python src/fomtan/app/main.py
+    ```
+    *(Nota: El sistema abrirá dos ventanas: la cámara y el dashboard estadístico)*
+
+3.  **Controles**:
+    *   `ESC`: Salir del programa.
 
 ---
 
-## Dataset
+## 📂 Arquitectura del Proyecto
 
-El prototipo utiliza un dataset de frutas basado en:
+El código ha sido refactorizado para seguir principios de **Arquitectura Limpia y Modular**:
 
-- Conjunto tipo **Fruits-360** y/o datasets “fresh vs rotten” (Kaggle).
-- Re-etiquetado en **tres clases de calidad**:
-  - `primera`  → fruta visualmente sana.
-  - `segunda`  → defectos leves pero comercializable.
-  - `descarte` → fruta con hongos/pudrición/daño severo.
+```
+FOMTAN-analytics/
+├── models/                 # Modelos de IA (YOLOv5 .pt)
+├── src/
+│   └── fomtan/
+│       ├── app/
+│       │   └── main.py     # 🎮 Orquestador Principal (Solo lógica de control)
+│       ├── adapters/
+│       │   └── audio_tts.py # 🗣️ Adaptador de Voz (Edge TTS / Subprocess)
+│       ├── analytics/
+│       │   └── harvest_stats.py # 🧠 Lógica Matemática (Proyecciones, Logaritmos)
+│       └── ui/
+│           └── dashboard.py # 📊 Interfaz Gráfica (Matplotlib / TkAgg)
+└── README.md               # Documentación
+```
+
+---
+
+## 🔮 Roadmap (Siguientes Pasos)
+
+Este prototipo en Python sirve para calibrar las matemáticas y la experiencia de usuario. El siguiente paso es la **Migración a Móvil**:
+
+1.  **Exportación de Modelo**: Convertir `best.pt` a `.tflite` (Android) y `.mlmodel` (iOS).
+2.  **App Nativa**: Desarrollar la interfaz en **Flutter** o **Kotlin/Swift**.
+3.  **Edge AI**: Ejecutar la detección directamente en el procesador del celular (NPU) sin necesidad de internet ni PC.
+
+---
+
+**Desarrollado por el equipo de FOMTAN Analytics**
+*Versión de Desarrollo - Noviembre 2025*
