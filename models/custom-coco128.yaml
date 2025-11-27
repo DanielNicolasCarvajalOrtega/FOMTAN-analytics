@@ -1,0 +1,23 @@
+train: /Users/macbook/Desktop/Python/FOMTAN-analytics/yolov5/data/images/train
+val: /Users/macbook/Desktop/Python/FOMTAN-analytics/yolov5/data/images/val
+
+
+# Número de clases
+nc: 9
+
+# Nombres de las clases (en orden)
+names: 
+  - Manzana-buen-estado
+  - Manzana-mediano-estado
+  - Manzana-mal-estado
+  - Tomate-buen-estado
+  - Tomate-mediano-estado
+  - Tomate-mal-estado
+  - Cereza-buen-estado
+  - Cereza-mediano-estado
+  - Cereza-mal-estado
+
+
+
+# Download script/URL (optional)
+download: https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128.zip
