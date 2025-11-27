@@ -14,6 +14,7 @@ class ResultadoDeteccion:
     etiqueta: str
     probabilidad: float
     color: str  # 'verde', 'amarillo', 'rojo'
+    box: Tuple[int, int, int, int] = None  # (x1, y1, x2, y2) opcional
 
 # Alias to keep backward compatibility with existing imports
 DetectionResult = ResultadoDeteccion

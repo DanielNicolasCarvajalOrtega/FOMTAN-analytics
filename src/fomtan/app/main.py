@@ -1,95 +1,96 @@
 import cv2
-import time
+import torch
+import numpy as np
+import sys
 import os
-from ..adapters.camera_cv import CameraCV
-from ..adapters.console_ui import ConsoleUI
-from ..adapters.model_tflite import ModelTFLite
+import time
+from pathlib import Path
 
-def run_live_mode():
-    camera = CameraCV()
-    ui = ConsoleUI()
+# Configuración robusta del path para importaciones
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 
-    print("Starting FOMTAN Live Mode...")
-    print("Loading models...")
+from src.fomtan.adapters.audio_tts import VoiceAssistant
+from src.fomtan.analytics.harvest_stats import HarvestAnalytics
+from src.fomtan.ui.dashboard import HarvestDashboard
+
+# Cargar modelo
+print("Cargando modelo...")
+model = torch.hub.load('ultralytics/yolov5', 'custom', 
+                      path='/Users/macbook/Desktop/Python/FOMTAN-analytics/models/best.pt',
+                      force_reload=False)
+
+# Inicializar Sistemas
+print("Inicializando sistemas...")
+voice_assistant = VoiceAssistant()
+analytics = HarvestAnalytics()
+dashboard = HarvestDashboard(update_interval=10.0)
+
+# CONFIGURACIÓN DE ALTA PRECISIÓN
+model.conf = 0.60
+model.iou = 0.45
+model.max_det = 5
+model.amp = True
+
+# Abrir cámara
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1220)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+print("\n=== DETECTOR + ANALYTICS INICIADO ===")
+print("Presiona ESC para salir")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
     
-    # Resolve paths relative to the project root
-    # src/fomtan/app/__file__ -> ../../../ -> Project Root
-    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-    models_dir = os.path.join(root_dir, "models", "tflite")
+    current_time = time.time()
     
-    try:
-        model = ModelTFLite(
-            detection_path=os.path.join(models_dir, "detect_fruit.tflite"),
-            classification_path=os.path.join(models_dir, "cls_estado.tflite"),
-            labels_path=os.path.join(models_dir, "labels.txt")
-        )
-        print("Models loaded successfully.")
-    except Exception as e:
-        print(f"Error loading models: {e}")
-        return
-
-    print("Press 'q' to quit.")
-
-    try:
-        camera.open()
+    # Detectar objetos
+    results = model(frame, size=640)
+    detections = results.pandas().xyxy[0]
+    
+    # 1. PROCESAR AUDIO
+    voice_assistant.process_detections(detections)
+    
+    # 2. PROCESAR ANALÍTICA
+    analytics.add_sample(detections, current_time)
+    
+    # 3. ACTUALIZAR UI (Dashboard)
+    if dashboard.should_update():
+        dashboard.update(analytics)
+    
+    # Renderizado de Video (OpenCV)
+    annotated_frame = frame.copy()
+    valid_detections = 0
+    
+    for idx, row in detections.iterrows():
+        confidence = row['confidence']
+        name = row['name']
         
-        # OPTIMIZACIONES DE RENDIMIENTO
-        frame_count = 0
-        last_result = None
-        fps_start = time.time()
-        fps_counter = 0
+        if confidence < model.conf:
+            continue
+
+        x1, y1, x2, y2 = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
         
-        while True:
-            frame = camera.read_frame()
-            if frame is None:
-                print("\nFailed to capture frame. Exiting...")
-                break
+        # Visualización
+        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
+        label = f"{name} {confidence:.0%}"
+        cv2.putText(annotated_frame, label, (x1, y1 - 10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        valid_detections += 1
+    
+    # Info en pantalla
+    cv2.imshow('Detector FOMTAN', annotated_frame)
+    
+    key = cv2.waitKey(1) & 0xFF
+    if key == 27:
+        break
 
-            # Procesar inferencia solo cada 3 frames (reduce carga de CPU/GPU)
-            if frame_count % 3 == 0:
-                result = model.predict(frame)
-                if result:
-                    last_result = result
-            
-            frame_count += 1
-            
-            # Usar el último resultado válido
-            if last_result:
-                ui.display_status(last_result)
-                
-                # Draw result on frame
-                label_text = f"{last_result.etiqueta} ({last_result.probabilidad:.2f})"
-                color_map = {"Verde": (0, 255, 0), "Amarillo": (0, 255, 255), "Rojo": (0, 0, 255)}
-                color = color_map.get(last_result.color, (255, 255, 255))
-                
-                cv2.putText(frame, label_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
-            else:
-                # No detection
-                cv2.putText(frame, "Buscando...", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (200, 200, 200), 2)
-            
-            # Calcular y mostrar FPS
-            fps_counter += 1
-            if fps_counter >= 48:
-                fps = fps_counter / (time.time() - fps_start)
-                fps_start = time.time()
-                fps_counter = 0
-                cv2.putText(frame, f"FPS: {fps:.1f}", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-            
-            # Show camera feed in a window
-            cv2.imshow('FOMTAN Live Feed', frame)
-
-            # Check for 'q' key press in the GUI window (waitKey ya controla FPS)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-    except KeyboardInterrupt:
-        print("\nStopped by user (Ctrl+C).")
-    except Exception as e:
-        print(f"\nAn error occurred: {e}")
-    finally:
-        camera.close()
-        cv2.destroyAllWindows()
-        print("\nSession closed.")
-
-if __name__ == "__main__":
-    run_live_mode()
+cap.release()
+cv2.destroyAllWindows()
+dashboard.close()
+print("\nSistema cerrado")

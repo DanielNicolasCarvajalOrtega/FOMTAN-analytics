@@ -1,90 +1,95 @@
-# FOMTAN Analytics
+# 🍎 FOMTAN Analytics (Prototipo v3.0)
 
-Sistema de análisis y clasificación de frutas en tiempo real usando TensorFlow Lite.
+> 🚧 **ESTADO DEL PROYECTO: EN DESARROLLO / PROTOTIPO** 🚧
+>
+> Este software es una versión de prueba técnica diseñada para validar la lógica de negocio y los algoritmos de visión artificial en un entorno controlado (PC/Mac). **NO es la versión final para producción.**
+>
+> El objetivo final es migrar esta lógica a una **Aplicación Móvil (Android/iOS)** usando tecnología Edge AI (TFLite/CoreML) para su uso en campo sin internet.
 
-## Inicio Rápido
+---
 
-### Opción 1: Usando el script de inicio (Recomendado)
-```bash
-./start.sh
-```
+## � Descripción General
 
-### Opción 2: Usando el entorno virtual directamente
-```bash
-source .venv/bin/activate
-python run.py
-```
+**FOMTAN Analytics** es un sistema inteligente para el sector agrícola (AgroTech) que utiliza Visión Artificial para detectar, clasificar y analizar la cosecha en tiempo real.
 
-### Opción 3: Sin activar el entorno virtual
-```bash
-.venv/bin/python run.py
-```
+### 🌟 Características Principales (Actuales)
 
-## Requisitos
+1.  **👁️ Detección de Objetos (YOLOv5)**:
+    *   Identifica frutas (Manzanas, Tomates, Cerezas) y su estado (Bueno, Regular, Malo).
+    *   Alta precisión ajustada para evitar falsos positivos.
 
-- Python 3.8+
-- Cámara conectada
-- Dependencias instaladas (ver `requirements.txt`)
+2.  **🗣️ Asistente de Voz Neural (Edge TTS)**:
+    *   Te habla en tiempo real usando voces ultra-realistas (Microsoft Azure Neural Voices).
+    *   Avisa qué frutas ve sin necesidad de mirar la pantalla.
+    *   *Voz actual: "Dalia" (Español México).*
 
-## Instalación de Dependencias
+3.  **🧠 Harvest Intelligence (Analítica de Negocio)**:
+    *   **Proyección de Rendimiento**: Predice cuántas unidades se cosecharán en el día (Función Lineal).
+    *   **Índice de Esfuerzo**: Calcula la dificultad del lote usando logaritmos (si hay mucha fruta mala, el índice sube).
+    *   **Valoración Financiera**: Estima el dinero ($ USD) visible en pantalla.
 
-```bash
-# Activar entorno virtual
-source .venv/bin/activate
+4.  **📊 Dashboard en Tiempo Real**:
+    *   Ventana gráfica independiente que muestra los KPIs de negocio actualizados cada 10 segundos.
 
-# Instalar dependencias
-pip install -r requirements.txt
+---
 
-# Instalar TensorFlow
-pip install tensorflow
-```
+## 🚀 Cómo Ejecutar el Sistema
 
-## Estructura del Proyecto
+### Requisitos Previos
+*   Python 3.8+
+*   Entorno virtual configurado (`.venv`)
+*   Cámara Web
+*   Conexión a Internet (Solo para la voz neural de alta calidad)
+
+### Pasos para Iniciar
+
+1.  **Activar el entorno virtual**:
+    ```bash
+    source .venv/bin/activate
+    ```
+
+2.  **Ejecutar el programa principal**:
+    ```bash
+    python src/fomtan/app/main.py
+    ```
+    *(Nota: El sistema abrirá dos ventanas: la cámara y el dashboard estadístico)*
+
+3.  **Controles**:
+    *   `ESC`: Salir del programa.
+
+---
+
+## 📂 Arquitectura del Proyecto
+
+El código ha sido refactorizado para seguir principios de **Arquitectura Limpia y Modular**:
 
 ```
 FOMTAN-analytics/
-├── models/tflite/          # Modelos TensorFlow Lite
-│   ├── detect_fruit.tflite # Modelo de detección
-│   ├── cls_estado.tflite   # Modelo de clasificación
-│   └── labels.txt          # Etiquetas (buena, segunda, descarte)
-├── src/fomtan/
-│   ├── adapters/           # Adaptadores (cámara, modelos, UI)
-│   ├── app/                # Aplicación principal
-│   └── core/               # Tipos y utilidades
-├── run.py                  # Script de entrada
-└── start.sh                # Script de inicio (recomendado)
+├── models/                 # Modelos de IA (YOLOv5 .pt)
+├── src/
+│   └── fomtan/
+│       ├── app/
+│       │   └── main.py     # 🎮 Orquestador Principal (Solo lógica de control)
+│       ├── adapters/
+│       │   └── audio_tts.py # 🗣️ Adaptador de Voz (Edge TTS / Subprocess)
+│       ├── analytics/
+│       │   └── harvest_stats.py # 🧠 Lógica Matemática (Proyecciones, Logaritmos)
+│       └── ui/
+│           └── dashboard.py # 📊 Interfaz Gráfica (Matplotlib / TkAgg)
+└── README.md               # Documentación
 ```
 
-## Uso
+---
 
-1. Ejecuta el programa con `./start.sh`
-2. La aplicación abrirá la cámara y comenzará a detectar frutas
-3. Los resultados se mostrarán en pantalla:
-   - **Verde**: Pieza buena (primera calidad)
-   - **Amarillo**: Pieza segunda
-   - **Rojo**: Pieza de descarte
-4. Presiona 'q' para salir
+## 🔮 Roadmap (Siguientes Pasos)
 
-## Solución de Problemas
+Este prototipo en Python sirve para calibrar las matemáticas y la experiencia de usuario. El siguiente paso es la **Migración a Móvil**:
 
-### Error: "No module named 'cv2'"
-```bash
-pip install opencv-python
-```
+1.  **Exportación de Modelo**: Convertir `best.pt` a `.tflite` (Android) y `.mlmodel` (iOS).
+2.  **App Nativa**: Desarrollar la interfaz en **Flutter** o **Kotlin/Swift**.
+3.  **Edge AI**: Ejecutar la detección directamente en el procesador del celular (NPU) sin necesidad de internet ni PC.
 
-### Error: "TensorFlow Lite is not installed"
-```bash
-pip install tensorflow
-```
+---
 
-### Error: "cannot import name 'DetectionResult'"
-Este error ya está solucionado en la versión actual del código.
-
-### La cámara no se abre
-- Verifica que la cámara esté conectada
-- Verifica los permisos de la cámara en Configuración del Sistema
-- Prueba con un índice de cámara diferente en `camera_cv.py`
-
-## Desarrollo
-
-Para contribuir al proyecto, sigue la estructura de código existente y asegúrate de que todos los imports usen rutas relativas dentro del paquete `fomtan`.
+**Desarrollado por el equipo de FOMTAN Analytics**
+*Versión de Desarrollo - Noviembre 2025*
