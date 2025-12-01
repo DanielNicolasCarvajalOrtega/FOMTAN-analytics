@@ -1,6 +1,8 @@
 import math
+import time
 from dataclasses import dataclass
 from typing import List, Dict
+from collections import defaultdict
 
 @dataclass
 class BatchMetrics:
@@ -12,34 +14,74 @@ class BatchMetrics:
 
 class HarvestAnalytics:
     def __init__(self):
-        # Precios de mercado simulados (en USD o moneda local por unidad)
-        self.prices = {
-            "buen-estado": 0.50,    # Precio Premium
-            "mediano-estado": 0.30, # Precio Estándar
-            "mal-estado": 0.00      # Pérdida
+        # PRECIOS DE MERCADO (Ganancia) por unidad en USD
+        self.market_prices = {
+            "buen-estado": 0.50,     # Precio Premium
+            "mediano-estado": 0.30,  # Precio Estándar
+            "mal-estado": 0.00       # Sin valor
+        }
+        
+        # PRECIOS DE PÉRDIDA (Costo) por unidad en USD
+        self.loss_prices = {
+            "buen-estado": 0.00,     # Sin pérdida
+            "mediano-estado": 0.10,  # Costo de procesamiento extra
+            "mal-estado": 0.25       # Costo de descarte + trabajo desperdiciado
         }
         
         # Historial de métricas para análisis temporal
         self.history: List[BatchMetrics] = []
         
-        # Constante para el modelo logarítmico (ajustable según dificultad real)
+        # Acumulador de ganancias por TIPO DE FRUTA (no por estado)
+        self.minute_start_time = time.time()
+        self.minute_earnings_by_fruit = defaultdict(float)  # {'Manzana': $X, 'Tomate': $Y}
+        self.minute_counts_by_fruit = defaultdict(int)      # {'Manzana': N, 'Tomate': M}
+        
+        # Constante para el modelo logarítmico
         self.LOG_K_FACTOR = 10.0
+
+    def _extract_fruit_name(self, full_label):
+        """
+        Extrae el nombre de la fruta del label completo.
+        'Manzana-buen-estado' -> 'Manzana'
+        'Tomate-mal-estado' -> 'Tomate'
+        """
+        if '-' in full_label:
+            return full_label.split('-')[0]
+        return full_label
+
+    def _extract_state(self, full_label):
+        """
+        Extrae el estado del label completo.
+        'Manzana-buen-estado' -> 'buen-estado'
+        """
+        if '-' in full_label:
+            parts = full_label.split('-', 1)  # Split en el primer guion solamente
+            if len(parts) > 1:
+                return parts[1]
+        return "buen-estado"  # Default
 
     def add_sample(self, detections_df, timestamp):
         """Ingresa un frame de datos crudos para análisis"""
         if detections_df is None or detections_df.empty:
             return
 
-        # Contar por categorías
+        # Contar por categorías (para estadísticas generales)
         counts = {"buen-estado": 0, "mediano-estado": 0, "mal-estado": 0}
         
         for name in detections_df['name']:
-            if "buen-estado" in name:
-                counts["buen-estado"] += 1
-            elif "mediano-estado" in name:
-                counts["mediano-estado"] += 1
-            elif "mal-estado" in name:
-                counts["mal-estado"] += 1
+            fruit = self._extract_fruit_name(name)
+            state = self._extract_state(name)
+            
+            # Actualizar contadores generales de estado
+            if state in counts:
+                counts[state] += 1
+            
+            # Actualizar contadores POR FRUTA
+            self.minute_counts_by_fruit[fruit] += 1
+            
+            # Calcular ganancia neta de esta fruta en este estado
+            net_value = self.market_prices.get(state, 0) - self.loss_prices.get(state, 0)
+            self.minute_earnings_by_fruit[fruit] += net_value
         
         total = sum(counts.values())
         if total == 0: return
@@ -53,7 +95,33 @@ class HarvestAnalytics:
         )
         self.history.append(metrics)
 
-    # --- MATEMÁTICA DE NEGOCIO ---
+    def should_reset_minute(self, current_time):
+        """Verifica si ha pasado 1 minuto para resetear contadores"""
+        return (current_time - self.minute_start_time) >= 60.0
+
+    def reset_minute_counters(self, current_time):
+        """Resetea los contadores del minuto"""
+        self.minute_start_time = current_time
+        self.minute_earnings_by_fruit.clear()
+        self.minute_counts_by_fruit.clear()
+
+    def get_minute_earnings_by_fruit(self):
+        """
+        Retorna las ganancias acumuladas del minuto actual POR FRUTA
+        Retorna: {'Manzana': $X, 'Tomate': $Y, 'Cereza': $Z, 'Total': $W}
+        """
+        earnings = dict(self.minute_earnings_by_fruit)
+        earnings['Total'] = sum(earnings.values())
+        return earnings
+
+    def get_minute_counts_by_fruit(self):
+        """
+        Retorna los conteos del minuto actual POR FRUTA
+        Retorna: {'Manzana': N, 'Tomate': M, 'Cereza': P}
+        """
+        return dict(self.minute_counts_by_fruit)
+
+    # --- MATEMÁTICA DE NEGOCIO (Métodos antiguos mantenidos para compatibilidad) ---
 
     def calculate_projected_yield(self, hours_ahead=8) -> float:
         """
@@ -63,9 +131,7 @@ class HarvestAnalytics:
         if len(self.history) < 2:
             return 0.0
 
-        # Usamos los últimos 60 segundos para calcular la velocidad actual (m)
-        # m = (y2 - y1) / (x2 - x1)
-        recent_samples = self.history[-100:] # Últimas 100 muestras
+        recent_samples = self.history[-100:]
         
         start_time = recent_samples[0].timestamp
         end_time = recent_samples[-1].timestamp
@@ -74,34 +140,21 @@ class HarvestAnalytics:
         if time_diff_minutes <= 0: return 0.0
         
         total_harvested = sum(m.total_count for m in recent_samples)
-        
-        # Velocidad: Frutas por minuto
         rate_per_minute = total_harvested / time_diff_minutes
-        
-        # Proyección Lineal: Rate * Minutos Futuros
         projection = rate_per_minute * (hours_ahead * 60)
         return round(projection, 2)
 
     def calculate_sorting_effort_index(self) -> float:
         """
         FUNCIÓN LOGARÍTMICA: E = k * ln(Total / Buenos)
-        
-        Mide qué tan difícil es procesar este lote.
-        - Si todo es bueno: ln(1) = 0 (Esfuerzo nulo)
-        - Si hay mucha basura: El esfuerzo sube logarítmicamente (se dispara).
         """
         if not self.history: return 0.0
         
         latest = self.history[-1]
-        if latest.good_count == 0: return 100.0 # Esfuerzo máximo (todo basura)
+        if latest.good_count == 0: return 100.0
         
-        # Evitar división por cero y calcular ratio
         ratio = latest.total_count / latest.good_count
-        
-        # Fórmula Logarítmica
         effort_index = self.LOG_K_FACTOR * math.log(ratio)
-        
-        # Normalizar a escala 0-100 para gerencia
         return min(100.0, round(effort_index, 2))
 
     def calculate_estimated_value(self) -> float:
@@ -112,9 +165,9 @@ class HarvestAnalytics:
         if not self.history: return 0.0
         latest = self.history[-1]
         
-        value = (latest.good_count * self.prices["buen-estado"] +
-                 latest.medium_count * self.prices["mediano-estado"] +
-                 latest.bad_count * self.prices["mal-estado"])
+        value = (latest.good_count * self.market_prices["buen-estado"] +
+                 latest.medium_count * self.market_prices["mediano-estado"] +
+                 latest.bad_count * self.market_prices["mal-estado"])
                  
         return round(value, 2)
 
@@ -125,8 +178,6 @@ class HarvestAnalytics:
         yield_proj = self.calculate_projected_yield(8)
         effort = self.calculate_sorting_effort_index()
         value = self.calculate_estimated_value()
-        
-        # Interpretación para Gerencia
         viability = "ALTA" if effort < 20 else "MEDIA" if effort < 50 else "BAJA (Riesgo)"
         
         return (

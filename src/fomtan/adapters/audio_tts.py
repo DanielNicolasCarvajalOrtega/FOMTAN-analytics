@@ -9,7 +9,7 @@ class VoiceAssistant:
     def __init__(self):
         # Diccionario para controlar el tiempo de la última mención de cada objeto
         self.last_spoken = {}
-        self.cooldown = 4.0  # Segundos de espera entre avisos
+        self.cooldown = 10.0  # Segundos de espera entre avisos (AUMENTADO de 4 a 10)
         self.temp_dir = tempfile.gettempdir()
         
         # VOZ NEURAL CONFIGURADA (Calidad Humana)
@@ -70,16 +70,16 @@ class VoiceAssistant:
     def process_detections(self, detections_df):
         """
         Lógica de Negocio:
-        1. Filtra detecciones con confianza > 63%
+        1. Filtra detecciones con confianza > 75% (MÁS ESTRICTO)
         2. Agrupa y cuenta objetos por tipo (limpiando etiquetas)
-        3. Si hay al menos 1 objeto, verifica el tiempo de espera (cooldown)
+        3. Si hay al menos 2 objetos (MENOS REPETITIVO), verifica el tiempo de espera (cooldown)
         4. Si cumple todo, habla.
         """
         if detections_df is None or detections_df.empty:
             return
 
-        # 1. Filtrar por confianza (Umbral estricto para voz)
-        high_conf_detections = detections_df[detections_df['confidence'] > 0.63]
+        # 1. Filtrar por confianza (Umbral MÁS ESTRICTO)
+        high_conf_detections = detections_df[detections_df['confidence'] > 0.75]
         
         if high_conf_detections.empty:
             return
@@ -96,9 +96,9 @@ class VoiceAssistant:
 
         # 3. Verificar reglas por objeto
         for obj_name, count in counts.items():
-            # Regla: Al menos 1 objeto
-            if count >= 1:
-                # Verificar cooldown (4 segundos)
+            # Regla: Al menos 2 objetos (REDUCIR RUIDO DE VOZ)
+            if count >= 2:
+                # Verificar cooldown (10 segundos)
                 last_time = self.last_spoken.get(obj_name, 0)
                 
                 if current_time - last_time >= self.cooldown:
